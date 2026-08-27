@@ -148,16 +148,6 @@ feishu_dump_<ts>/
 
 完整清单与实时模块表：`kd list`。
 
-## 扩展新产品
-
-接入新平台（企业微信/公众号/小程序/Telegram 等）只需三步：
-
-1. 新建 `internal/<name>/` 包，按既有产品模式实现凭据、分页、模块与资源约定；
-2. 导出 `DetectCredential(appID, token string) bool`（散凭据识别）与 `ListTasks() []TaskInfo`；
-3. 在 `cmd/kd/main.go` 的 `registry()` 里注册一行 `product.Spec`（`internal/product` 契约）。
-
-`kd run` 的自动识别与 `kd list` 的模块清单都会自动纳入新产品，无需改动其他代码。
-
 ## License
 
 [MIT](LICENSE) © ejfkdev

@@ -148,16 +148,6 @@ Failures and empty results are never written as data; they land in run.log only.
 
 Full live list: `kd list`.
 
-## Adding a new product
-
-Three steps for a new platform (WeCom / WeChat Official Account / Mini Program / Telegram / ...):
-
-1. Create `internal/<name>/` implementing credentials, paging, modules and resource conventions;
-2. Export `DetectCredential(appID, token string) bool` and `ListTasks() []TaskInfo`;
-3. Register one `product.Spec` in `registry()` inside `cmd/kd/main.go` (contract in `internal/product`).
-
-`kd run` auto-detection and `kd list` pick the new product up automatically.
-
 ## License
 
 [MIT](LICENSE) © ejfkdev
