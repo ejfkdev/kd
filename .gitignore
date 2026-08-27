@@ -1,0 +1,14 @@
+# build artifacts
+dist/
+/kd
+feishu-dump
+dingtalk-dump
+
+# dump outputs
+feishu_dump_*/
+dingtalk_dump_*/
+*.json.tmp
+*.part
+
+# OS
+.DS_Store
