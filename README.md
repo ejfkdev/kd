@@ -1,18 +1,16 @@
-# kd
+# kd · 基于应用 Key 的数据备份工具
 
-基于应用 Key 的数据备份工具：输入应用的 App Key/Secret 或 Access Token，把该凭据可访问的业务数据（通讯录、群消息、文档、日程、考勤等）**备份到本地**——结构化 JSON 加原始附件/图片，支持限流、断点续传与增量续跑。
+[English](README.en.md)
+
+[![GitHub release](https://img.shields.io/github/v/release/ejfkdev/kd?label=release)](https://github.com/ejfkdev/kd/releases)
+[![GitHub downloads](https://img.shields.io/github/downloads/ejfkdev/kd/total)](https://github.com/ejfkdev/kd/releases)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/ejfkdev/kd/release.yml)](https://github.com/ejfkdev/kd/actions)
+[![Go version](https://img.shields.io/github/go-mod/go-version/ejfkdev/kd)](https://github.com/ejfkdev/kd)
+[![License](https://img.shields.io/github/license/ejfkdev/kd)](LICENSE)
+
+输入应用的 App Key/Secret 或 Access Token，把该凭据可访问的业务数据（通讯录、群消息、文档、日程、考勤等）**备份到本地**——结构化 JSON 加原始附件/图片，支持限流、断点续传与增量续跑。
 
 当前支持 **飞书 (Feishu/Lark)** 与 **钉钉 (DingTalk)**。
-
-## 扩展新产品
-
-接入新平台（企业微信/公众号/小程序/Telegram 等）只需三步：
-
-1. 新建 `internal/<name>/` 包，按既有产品模式实现凭据、分页、模块与资源约定；
-2. 导出 `DetectCredential(appID, token string) bool`（散凭据识别）与 `ListTasks() []TaskInfo`；
-3. 在 `cmd/kd/main.go` 的 `registry()` 里注册一行 `product.Spec`（`internal/product` 契约）。
-
-`kd run` 的自动识别与 `kd list` 的模块清单都会自动纳入新产品，无需改动其他代码。
 
 ## 特性
 
@@ -55,7 +53,7 @@ curl -L -o kd https://github.com/ejfkdev/kd/releases/download/${VER}/kd_linux_am
 chmod +x kd && ./kd version
 ```
 
-> macOS 二进制未签名，首次运行如被 Gatekeeper 拦截请右键打开，或加 xattr 豁免。
+> macOS 二进制未签名且不做 UPX（现代 macOS 会终止加壳的可执行文件），首次运行如被 Gatekeeper 拦截请右键打开。
 
 ## 快速开始
 
@@ -81,7 +79,7 @@ kd version
 | `-qps` / `-workers` | 全局限速 / 逐条循环并发（默认 20 / 8，接口级余量自动 sleep 兜底） |
 | `-retry` / `-timeout` | 限流重试次数 / 单请求超时秒（5-300） |
 | `-proxy` / `-x` | HTTP(S) 代理，作用于全部请求通路 |
-| `-host feishu\|lark`（飞书） | 平台域：飞书 `open.feishu.cn` / Lark 国际站 `open.larksuite.com`（OAuth/accounts 域自动跟随），默认 feishu |
+| `-host feishu\|lark`（飞书） | 平台域：飞书 `open.feishu.cn` / Lark 国际站 `open.larksuite.com`，默认 feishu |
 | `-only a,b` / `-skip a,b` | 模块选择，用 `组.名`（见 `kd list`） |
 | `-no-download` / `-max-items N` | 关闭资源下载 / 每列表条目上限 |
 | `-verbose` | 逐页/进度日志 |
@@ -149,3 +147,17 @@ feishu_dump_<ts>/
 | `misc.*` | 应用信息、权限边界探测（逐接口返回缺失 scope 清单） |
 
 完整清单与实时模块表：`kd list`。
+
+## 扩展新产品
+
+接入新平台（企业微信/公众号/小程序/Telegram 等）只需三步：
+
+1. 新建 `internal/<name>/` 包，按既有产品模式实现凭据、分页、模块与资源约定；
+2. 导出 `DetectCredential(appID, token string) bool`（散凭据识别）与 `ListTasks() []TaskInfo`；
+3. 在 `cmd/kd/main.go` 的 `registry()` 里注册一行 `product.Spec`（`internal/product` 契约）。
+
+`kd run` 的自动识别与 `kd list` 的模块清单都会自动纳入新产品，无需改动其他代码。
+
+## License
+
+[MIT](LICENSE) © ejfkdev
