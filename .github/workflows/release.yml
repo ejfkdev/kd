@@ -42,17 +42,32 @@ jobs:
             go build -trimpath -ldflags "-s -w -X main.version=${VER}" \
             -o "dist/${NAME}" ./cmd/kd
 
-      # 除 macOS 外均用 UPX 压缩（darwin 签名体系对 UPX 不友好）
+      # UPX 压缩：macOS（签名体系不友好）与 windows/arm64（UPX 尚不支持该格式）跳过
       - name: UPX compress
-        if: matrix.goos != 'darwin'
+        if: matrix.goos != 'darwin' && !(matrix.goos == 'windows' && matrix.goarch == 'arm64')
         uses: crazy-max/ghaction-upx@v3
         with:
           files: |
             dist/kd_*
           args: --best
 
-      - name: Publish release assets
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kd_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/kd_*
+          if-no-files-found: error
+
+  publish:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
         with:
           files: dist/kd_*
           generate_release_notes: true
