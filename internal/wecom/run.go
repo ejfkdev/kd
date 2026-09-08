@@ -1,4 +1,4 @@
-package dingtalk
+package wecom
 
 import (
 	"context"
@@ -14,18 +14,11 @@ type TaskInfo struct {
 	Group string
 }
 
-// DetectCredential 判断松散凭据是否属于钉钉（kd run 自动识别用）。
+// DetectCredential 判断松散凭据是否属于企业微信（kd run 自动识别用）。
+// corpid 以 ww/wx 开头；纯 access_token 无法与钉钉区分，归钉钉兜底，
+// 建议用 kd wecom 显式指定。
 func DetectCredential(appID, token string) bool {
-	switch {
-	case strings.HasPrefix(appID, "ding"):
-		return true
-	case strings.HasPrefix(appID, "ww") || strings.HasPrefix(appID, "wx"):
-		// 企业微信 corpid，归 wecom
-		return false
-	case token != "" && !strings.HasPrefix(token, "t-") && !strings.HasPrefix(token, "u-") && !strings.HasPrefix(appID, "cli_"):
-		return true
-	}
-	return false
+	return strings.HasPrefix(appID, "ww") || strings.HasPrefix(appID, "wx")
 }
 
 // ListTasks returns every module id/description in execution order.
@@ -40,9 +33,12 @@ func ListTasks() []TaskInfo {
 
 func allTasks() []task {
 	var tasks []task
-	tasks = append(tasks, approvalTasks()...)
+	tasks = append(tasks, agentTasks()...)
 	tasks = append(tasks, contactTasks()...)
-	tasks = append(tasks, attendanceTasks()...)
+	tasks = append(tasks, externalTasks()...)
+	tasks = append(tasks, approvalTasks()...)
+	tasks = append(tasks, checkinTasks()...)
+	tasks = append(tasks, oaTasks()...)
 	tasks = append(tasks, miscTasks()...)
 	return tasks
 }
@@ -51,7 +47,7 @@ func allTasks() []task {
 func (d *Dumper) Run(ctx context.Context) error {
 	outDir := d.opt.Out
 	if outDir == "" {
-		outDir = fmt.Sprintf("dingtalk_dump_%s", time.Now().Format("20060102_150405"))
+		outDir = fmt.Sprintf("wecom_dump_%s", time.Now().Format("20060102_150405"))
 	}
 	if strings.HasSuffix(outDir, ".json") {
 		outDir = strings.TrimSuffix(outDir, ".json")
@@ -60,10 +56,10 @@ func (d *Dumper) Run(ctx context.Context) error {
 	o := d.out
 
 	switch {
-	case d.opt.AppSecret != "" && d.opt.AccessToken != "":
-		o.SetMeta("auth_method", "appkey+appsecret (direct token fallback)")
-	case d.opt.AppSecret != "":
-		o.SetMeta("auth_method", "appkey+appsecret")
+	case d.opt.CorpSecret != "" && d.opt.AccessToken != "":
+		o.SetMeta("auth_method", "corpid+corpsecret (direct token fallback)")
+	case d.opt.CorpSecret != "":
+		o.SetMeta("auth_method", "corpid+corpsecret")
 	default:
 		o.SetMeta("auth_method", "access_token")
 	}
@@ -77,13 +73,6 @@ func (d *Dumper) Run(ctx context.Context) error {
 
 	fmt.Println("== identity ==")
 	d.identity(ctx)
-	// SDK 首选的权限接口：企业应用授权信息
-	if auth, err := d.OrgAuthInfo(ctx); err == nil {
-		o.SetMeta("org_auth", auth)
-		d.log("identity", fmt.Sprintf("org auth info captured (%d fields)", len(auth)))
-	} else {
-		d.reqLog("org_auth(sdk): %v", err)
-	}
 	_ = o.WriteMeta(false)
 
 	fmt.Println("== data dump ==")

@@ -1,6 +1,7 @@
 // kd: 多产品 AK/SK 凭据数据备份工具，统一命令行入口。
 //
 //	kd feishu [flags]   飞书数据备份
+//	kd wecom [flags]    企业微信数据备份
 //	kd dingtalk [flags] 钉钉数据备份
 //	kd run [flags]      自动识别凭据归属产品，应用配置可省略
 //	kd list / version
@@ -20,6 +21,7 @@ import (
 	"github.com/ejfkdev/kd/internal/dingtalk"
 	"github.com/ejfkdev/kd/internal/feishu"
 	"github.com/ejfkdev/kd/internal/product"
+	"github.com/ejfkdev/kd/internal/wecom"
 )
 
 // version 由构建注入：go build -ldflags "-X main.version=v1.2.3"
@@ -36,6 +38,13 @@ func registry() []product.Spec {
 			TranslateFlags:   func(argv []string) []string { return argv },
 			Run:              runFeishu,
 			ListModules:      feishuModules,
+		},
+		{
+			Name: "wecom", Title: "企业微信",
+			DetectCredential: wecom.DetectCredential,
+			TranslateFlags:   func(argv []string) []string { return translateFlag(argv, "-token", "-access-token") },
+			Run:              runWecom,
+			ListModules:      wecomModules,
 		},
 		{
 			Name: "dingtalk", Title: "钉钉",
@@ -63,6 +72,14 @@ func dingtalkModules() []product.ModuleInfo {
 	return out
 }
 
+func wecomModules() []product.ModuleInfo {
+	out := []product.ModuleInfo{}
+	for _, t := range wecom.ListTasks() {
+		out = append(out, product.ModuleInfo{ID: t.ID, Group: t.Group, Desc: t.Desc})
+	}
+	return out
+}
+
 func main() {
 	args := os.Args[1:]
 	reg := registry()
@@ -71,7 +88,7 @@ func main() {
 		os.Exit(2)
 	}
 	switch args[0] {
-	case "feishu", "lark", "dingtalk":
+	case "feishu", "lark", "dingtalk", "wecom", "wework":
 		spec, ok := specByName(reg, args[0])
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown subcommand %q\n\n", args[0])
@@ -95,8 +112,11 @@ func main() {
 }
 
 func specByName(reg []product.Spec, name string) (product.Spec, bool) {
-	if name == "lark" {
+	switch name {
+	case "lark":
 		name = "feishu"
+	case "wework":
+		name = "wecom"
 	}
 	for _, s := range reg {
 		if s.Name == name {
@@ -116,7 +136,7 @@ func runAuto(reg []product.Spec, argv []string) {
 			return
 		}
 	}
-	fmt.Fprintf(os.Stderr, "error: 无法识别凭据归属产品：请提供 -app-id（cli_* 飞书 / ding* 钉钉）或 -token（t-/u- 飞书，其他为钉钉 access_token），或用 %s 显式指定\n", productNames(reg))
+	fmt.Fprintf(os.Stderr, "error: 无法识别凭据归属产品：请提供 -app-id（cli_* 飞书 / ww*|wx* 企业微信 / ding* 钉钉）或 -token（t-/u- 飞书，其他为钉钉 access_token），或用 %s 显式指定\n", productNames(reg))
 	os.Exit(2)
 }
 
@@ -161,6 +181,26 @@ func runDingtalk(argv []string) {
 	}
 	run(func(ctx context.Context) error {
 		d, err := dingtalk.NewDumper(opt)
+		if err != nil {
+			return err
+		}
+		return d.Run(ctx)
+	})
+}
+
+func runWecom(argv []string) {
+	fs := flag.NewFlagSet("kd wecom", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "kd wecom — 企业微信凭据数据备份\n\n用法:\n  kd wecom -corpid wwxxx -corpsecret yyy   # 等价别名 -app-id/-app-secret\n  kd wecom -access-token <token>\n\n参数:\n")
+		fs.PrintDefaults()
+	}
+	opt, err := wecom.ParseFlags(fs, argv)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(2)
+	}
+	run(func(ctx context.Context) error {
+		d, err := wecom.NewDumper(opt)
 		if err != nil {
 			return err
 		}
@@ -216,9 +256,10 @@ func usage(reg []product.Spec) {
 
 示例:
   kd run -app-id cli_xxx -app-secret yyy              # 自动识别为飞书
+  kd run -app-id wwxxx -app-secret yyy                # 自动识别为企业微信
   kd run -app-id dingxxx -app-secret yyy             # 自动识别为钉钉
   kd run -token t-xxx                                # 飞书 token
-  kd dingtalk -app-key dingxxx -app-secret yyy -x http://127.0.0.1:8080
+  kd wecom -corpid wwxxx -corpsecret yyy -x http://127.0.0.1:8080
   kd list
 
 公共参数(各子命令内):

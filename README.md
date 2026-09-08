@@ -10,11 +10,11 @@
 
 输入应用的 App Key/Secret 或 Access Token，把该凭据可访问的业务数据（通讯录、群消息、文档、日程、考勤等）**备份到本地**——结构化 JSON 加原始附件/图片，支持限流、断点续传与增量续跑。
 
-当前支持 **飞书 (Feishu/Lark)** 与 **钉钉 (DingTalk)**。
+当前支持 **飞书 (Feishu/Lark)**、**企业微信 (WeCom)** 与 **钉钉 (DingTalk)**。
 
 ## 特性
 
-- **凭据自动识别**：`cli_*` → 飞书，`ding*` → 钉钉，`t-/u-` 前缀 token → 飞书，其余 token → 钉钉
+- **凭据自动识别**：`cli_*` → 飞书，`ww*/wx*` → 企业微信，`ding*` → 钉钉，`t-/u-` 前缀 token → 飞书，其余 token → 钉钉
 - **启动即校验**：凭据无效立即中止；探针区分「凭据无效」与「接口无权限」
 - **权限边界测绘**：先查应用授权范围，逐接口探测缺失权限并解析出具体 scope 名
 - **全量备份**：列表按接口上限翻页、结果合并；逐条循环并行（workers 可配）
@@ -60,10 +60,12 @@ chmod +x kd && ./kd version
 ```bash
 # 凭据自动识别，无需指定产品
 kd run -app-id cli_xxx -app-secret yyy
+kd run -app-id wwxxx -app-secret yyy
 kd run -app-id dingxxx -app-secret yyy -proxy http://127.0.0.1:8080
 
 # 显式指定产品
 kd feishu -token t-xxx
+kd wecom -corpid wwxxx -corpsecret yyy
 kd dingtalk -access-token <token>
 
 # 其他命令
@@ -75,7 +77,7 @@ kd version
 
 | 参数 | 说明 |
 | --- | --- |
-| `-out <dir>` | 输出目录（默认 `feishu_dump_<ts>/` / `dingtalk_dump_<ts>/`） |
+| `-out <dir>` | 输出目录（默认 `feishu_dump_<ts>/` / `wecom_dump_<ts>/` / `dingtalk_dump_<ts>/`） |
 | `-qps` / `-workers` | 全局限速 / 逐条循环并发（默认 20 / 8，接口级余量自动 sleep 兜底） |
 | `-retry` / `-timeout` | 限流重试次数 / 单请求超时秒（5-300） |
 | `-proxy` / `-x` | HTTP(S) 代理，作用于全部请求通路 |
@@ -97,6 +99,17 @@ kd version
 | OAuth 授权码 | `-code <code> -code-redirect-uri <uri>`（换 user token） |
 
 环境变量：`FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_USER_TOKEN` / `FEISHU_TENANT_TOKEN`。
+
+**企业微信**
+
+| 形态 | 用法 |
+| --- | --- |
+| CorpID + Secret | `-corpid wwxxx -corpsecret yyy`（`-app-id`/`-app-secret` 为等价别名；自动换 token 并缓存续期） |
+| access_token | `-access-token <token>` |
+
+环境变量：`WECOM_CORP_ID` / `WECOM_CORP_SECRET` / `WECOM_ACCESS_TOKEN`。
+
+> 企业微信各业务面（通讯录/客户联系/审批/打卡/会议）各用各的 secret：通讯录同步助手、审批应用、打卡应用等凭据可见的数据面不同，工具会逐面探测并如实记录被拒原因。
 
 **钉钉**
 
@@ -135,6 +148,19 @@ feishu_dump_<ts>/
 | `calendar.*` | 日历/主日历、日程（时间窗口）、日程详情/参与人/ACL、日程附件 |
 | `docs.*` | 云空间文件树（递归）、批量元信息、评论、权限、docx 全文、表格值、多维表格全量、知识库（按空间拆目录） |
 | `task.*` `approval.*` `mail.*` `minutes.*` `okr.*` `hr.*` `misc.*` | 任务与附件、审批(v4)、邮件、妙记与转写、OKR、人事、机器人信息 |
+
+**企业微信**
+
+| 模块组 | 备份内容 |
+| --- | --- |
+| `identity` | corpid、可见应用列表（进 meta.json） |
+| `agent.*` | 可见应用列表、逐应用详情（含 logo 下载） |
+| `contact.*` | 部门树（simplelist 回退）、成员列表（user/listid 回退）、逐成员详情、标签及标签成员、头像下载 |
+| `external.*` | 客户联系功能成员、企业标签库、联系我渠道、客户列表/详情、客户群列表/详情、离职待继承、朋友圈（近一年） |
+| `approval.*` | 表单模板、审批单号（近一年按月窗口）、逐单详情 |
+| `checkin.*` | 成员打卡规则、日报/月报数据（近 90 天） |
+| `oa.*` | 会议室列表、成员直播 ID/直播详情 |
+| `misc.*` | 权限边界探测（逐接口记录无权限原因） |
 
 **钉钉**
 

@@ -10,11 +10,11 @@
 
 Back up every piece of business data reachable by an App Key/Secret or Access Token — contacts, group messages, docs, calendars, attendance and more — into structured JSON plus original attachments, with rate limiting, resumable downloads and incremental re-runs.
 
-Currently supports **Feishu (Lark)** and **DingTalk**.
+Currently supports **Feishu (Lark)**, **WeCom** and **DingTalk**.
 
 ## Features
 
-- **Auto-detect credentials**: `cli_*` → Feishu, `ding*` → DingTalk, `t-/u-` tokens → Feishu
+- **Auto-detect credentials**: `cli_*` → Feishu, `ww*/wx*` → WeCom, `ding*` → DingTalk, `t-/u-` tokens → Feishu
 - **Startup validation**: invalid credentials abort immediately; probes tell "invalid credential" apart from "no permission"
 - **Permission mapping**: read app scopes first, then probe each API surface for the missing scope names
 - **Full backup**: list APIs paged at their limits and merged; per-item loops parallelized
@@ -60,10 +60,12 @@ chmod +x kd && ./kd version
 ```bash
 # credentials auto-detect the product
 kd run -app-id cli_xxx -app-secret yyy
+kd run -app-id wwxxx -app-secret yyy
 kd run -app-id dingxxx -app-secret yyy -proxy http://127.0.0.1:8080
 
 # explicit product
 kd feishu -token t-xxx
+kd wecom -corpid wwxxx -corpsecret yyy
 kd dingtalk -access-token <token>
 
 # misc
@@ -75,7 +77,7 @@ kd version
 
 | Flag | Meaning |
 | --- | --- |
-| `-out <dir>` | output dir (default `feishu_dump_<ts>/` / `dingtalk_dump_<ts>/`) |
+| `-out <dir>` | output dir (default `feishu_dump_<ts>/` / `wecom_dump_<ts>/` / `dingtalk_dump_<ts>/`) |
 | `-qps` / `-workers` | global rate limit / per-item loop concurrency (default 20 / 8) |
 | `-retry` / `-timeout` | rate-limit retries / per-request timeout seconds (5-300) |
 | `-proxy` / `-x` | HTTP(S) proxy for all request paths |
@@ -97,6 +99,17 @@ Feishu also has `-resume`, `-download-threads` and the `-cal-from/-cal-to` event
 | OAuth authorization code | `-code <code> -code-redirect-uri <uri>` (exchanged for a user token) |
 
 Env vars: `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_USER_TOKEN` / `FEISHU_TENANT_TOKEN`.
+
+**WeCom**
+
+| Form | Usage |
+| --- | --- |
+| CorpID + Secret | `-corpid wwxxx -corpsecret yyy` (`-app-id`/`-app-secret` are aliases; token auto-fetched and cached) |
+| access_token | `-access-token <token>` |
+
+Env vars: `WECOM_CORP_ID` / `WECOM_CORP_SECRET` / `WECOM_ACCESS_TOKEN`.
+
+> Each WeCom business surface (contacts / external contacts / approval / checkin / meeting) is bound to its own secret — contacts-sync assistant, the approval app, the checkin app, etc. see different data. The tool probes every surface and records denials as-is.
 
 **DingTalk**
 
@@ -135,6 +148,19 @@ Failures and empty results are never written as data; they land in run.log only.
 | `calendar.*` | calendars, events (time window), event details/attendees/ACLs, event attachments |
 | `docs.*` | drive file tree (recursive), batch meta, comments, permissions, docx full text, sheet values, bitable data, wiki per-space |
 | `task.*` `approval.*` `mail.*` `minutes.*` `okr.*` `hr.*` `misc.*` | tasks, approvals (v4), mail, minutes & transcripts, OKR, HR, bot info |
+
+**WeCom**
+
+| Group | Content |
+| --- | --- |
+| `identity` | corp id, visible app list (into meta.json) |
+| `agent.*` | visible apps, per-app details (logo download) |
+| `contact.*` | department tree (simplelist fallback), members (user/listid fallback), per-member details, tags & tag members, avatar download |
+| `external.*` | follow-up users, corp tag library, contact-way channels, customers/details, group chats/details, unassigned (resigned handover), moments (past year) |
+| `approval.*` | form templates, approval numbers (past year, monthly windows), per-approval details |
+| `checkin.*` | member check-in rules, daily/monthly reports (past 90 days) |
+| `oa.*` | meeting rooms, member living ids / living details |
+| `misc.*` | permission probe (per-API denial reasons) |
 
 **DingTalk**
 

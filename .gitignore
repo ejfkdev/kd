@@ -3,10 +3,12 @@ dist/
 /kd
 feishu-dump
 dingtalk-dump
+wecom-dump
 
 # dump outputs
 feishu_dump_*/
 dingtalk_dump_*/
+wecom_dump_*/
 *.json.tmp
 *.part
 
